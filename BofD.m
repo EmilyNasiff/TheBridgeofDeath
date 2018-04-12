@@ -1,31 +1,41 @@
-% pub = rospublisher('/raw_vel')
-% msg = rosmessage(pub) 
-%send(pub,msg) 
 
-u = (2*pi)/20
-v = @(t) -(1.0494*u + 1.46916)*sin(2.65*t*u + 3.71*t) - (.99*u + 1.386)*cos(u*t + 1.4*t)
-w = @(t) -(((-.99*u + 1.386)*cos(u*t + 1.4*t))/(cos(2.65*t*u + 3.71*t))) - ((.99*sin(u*t + 1.4*t))/((-1.0494*u + 1.46916)*(sin(2.65*t*u + 3.71*t)).^2))*csc((-.99*sin(u*t + 1.4*t))/(.3960*cos(2.65*t*u + 3.71*t))).^2
+dt = .1
+c = 0.1;
+t = 0:dt:3.2/c
+t = t'
+
+
+r = [.3960*cos(2.65*(t*c+1.4)), -.99*sin(c*t + 1.4)];
+v = diff(r)./diff(t);
+mag_v = sqrt(v(:,1).^2 +v(:,2).^2)
+That = v./mag_v(1:length(v),:);
+That_p= diff(That)./diff(t(1:length(That),:));
+That_c = horzcat(That, zeros(length(That),1));
+That_pc = horzcat(That_p, zeros(length(That_p),1));
+w = cross(That_c(1:length(That_pc),:),That_pc);
+V = sqrt(sum((v'.^2)))'
+
 d = .245
-dt = .01
-a = 1
-for b = dt:dt:20,
-   V(a,:) = v(b);
-   a = a+1;
+
+for b = 1:length(w)
+    VL(b,:) = V(b,:)- (w(b,3)*(d/2));
+end
+for b = 1:length(w)
+    VR(b,:) = V(b,:)+(w(b,3)*(d/2));
 end
 
-c =1
+pub = rospublisher('/raw_vel')
+msg = rosmessage(pub)
+    
+for i = 1:length(VL)
+    msg.Data = [VL(i,:),VR(i,:)]
+    VL(i,:)
+    VR(i,:)
+    send(pub,msg)
+    pause(dt)
+end
 
-    for b = dt:dt:20
-        W(c,:) = w(b);
-        c = c+1;
-    end
-e = 1
-for b = 1:2000
-    Vl(e,:) = V(b,:)- (W(b,:)*(d/2));
-    e = e+1;
-end
-f = 1
-for b = 1:2000
-    Vr(f,:) = V(b,:)+(W(b,:)*(d/2));
-    f = f+1;
-end
+
+msg.Data = [0,0]
+send(pub,msg)
+
